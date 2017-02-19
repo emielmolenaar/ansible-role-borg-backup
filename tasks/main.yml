@@ -1,0 +1,49 @@
+---
+
+ - name: Stat borg
+   stat: path="{{ borg_binary_path }}"
+   register: borg_stat
+
+ - name: Check borg version
+   shell: "{{ borg_binary_path | quote }} --version | rev | cut -d ' ' -f1 | rev"
+   register: borg_version_output
+   when: borg_stat.stat.executable is defined and borg_stat.stat.executable
+   changed_when: False
+
+ - name: Install borg
+   get_url: url="{{ borg_release }}" dest="{{ borg_binary_path }}" mode=0751 owner=root group=root
+   when: borg_version_output.stdout_lines is not defined or (borg_version_output.stdout_lines != borg_version)
+
+ - name: Ensure backup directories existence
+   file: path="{{ item }}" state=directory owner=root group=root mode=0750
+   with_items:
+     - "{{ borg_backup_base_dir }}"
+     - "{{ borg_backup_local_dir }}"
+     - "{{ borg_backup_scripts_dir }}"
+     - "{{ borg_backup_ssh_keys_dir }}"
+
+ - name: Copy SSH keys
+   copy: src="{{ item.repository.ssh_key }}" dest="{{ borg_backup_ssh_keys_dir }}" owner=root group=root mode=0400
+   with_items: "{{ borg_backup_jobs }}"
+
+ - name: Setup job scripts
+   template: src="{{ item.script.template }}" dest="{{ borg_backup_scripts_dir }}/{{ item.script.name }}" owner=root group=root mode=0750
+   with_items: "{{ borg_backup_jobs }}"
+
+ - name: Setup cron vars
+   cron:
+     name: PATH
+     env: yes
+     value: "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin"
+     cron_file: "{{ borg_backup_cron_file }}"
+     user: root
+
+ - name: Setup cron jobs
+   cron:
+     job: "{{ borg_backup_scripts_dir }}/{{ item.script.name }} 2>&1 | mail -s \"{{ borg_backup_scripts_dir }}/{{ item.script.name }}\" {{ item.cron.mailto }} -r \"{{ item.cron.mailfrom }}\""
+     name: "Run backup"
+     minute: "{{ item.cron.minute }}"
+     hour: "{{ item.cron.hour }}"
+     cron_file: "{{ borg_backup_cron_file }}"
+     user: root
+   with_items: "{{ borg_backup_jobs }}"

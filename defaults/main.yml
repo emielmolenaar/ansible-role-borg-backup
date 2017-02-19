@@ -1,0 +1,22 @@
+---
+
+borg_version: 1.0.10
+borg_release: "https://github.com/borgbackup/borg/releases/download/{{ borg_version }}/borg-linux64"
+borg_binary_path: /usr/local/bin/borg
+borg_backup_base_dir: /var/borg
+borg_backup_local_dir: "{{ borg_backup_base_dir }}/local"
+borg_backup_scripts_dir: "{{ borg_backup_base_dir }}/scripts"
+borg_backup_ssh_keys_dir: "{{ borg_backup_base_dir }}/keys"
+borg_backup_ssh_cmd: "ssh -oStrictHostKeyChecking=no -oControlMaster=auto -oControlPersist=600"
+borg_backup_cron_file: borg_backup
+borg_backup_jobs: []
+#  - repository:
+#      url: someuser@backup-box:/path/to/repo
+#      ssh_key: keys/backup_key
+#      passphrase: some_vaulted_passphrase
+#    script:
+#      template: templates/somejob.sh
+#      name: somejob.sh
+#    cron:
+#      hour: 23
+#      minute: 30
